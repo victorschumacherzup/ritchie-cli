@@ -16,7 +16,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.9 // indirect
 	github.com/onsi/ginkgo v1.11.0
 	github.com/onsi/gomega v1.7.0
-	github.com/pkg/errors v0.9.1
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/radovskyb/watcher v1.0.7
 	github.com/spf13/cobra v1.0.0
 	golang.org/x/sys v0.0.0-20200806125547-5acd03effb82 // indirect

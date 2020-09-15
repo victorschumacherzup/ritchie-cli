@@ -144,7 +144,7 @@ func buildCommands() *cobra.Command {
 	configManager := runner.NewConfigManager(ritchieHomeDir, fileManager)
 	formulaExec := runner.NewExecutor(runners, configManager)
 
-	formulaCreator := creator.NewCreator(treeManager, dirManager, fileManager, tplManager)
+	formulaCreator := creator.NewCreator(dirManager, fileManager)
 	formulaWorkspace := fworkspace.New(ritchieHomeDir, fileManager)
 
 	watchManager := watcher.New(formulaLocalBuilder, dirManager)
@@ -157,7 +157,7 @@ func buildCommands() *cobra.Command {
 	upgradeDefaultUpdater := upgrade.NewDefaultUpdater()
 	upgradeManager := upgrade.NewDefaultManager(upgradeDefaultUpdater)
 	defaultUrlFinder := upgrade.NewDefaultUrlFinder(versionManager)
-	rootCmd := cmd.NewRootCmd(ritchieHomeDir, dirManager, tutorialFinder, versionManager)
+	rootCmd := cmd.NewRootCmd(ritchieHomeDir, dirManager, fileManager, tutorialFinder, versionManager)
 
 	// level 1
 	autocompleteCmd := cmd.NewAutocompleteCmd()

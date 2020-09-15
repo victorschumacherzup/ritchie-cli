@@ -25,6 +25,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/ZupIT/ritchie-cli/pkg/metric"
 	"github.com/ZupIT/ritchie-cli/pkg/prompt"
 	"github.com/ZupIT/ritchie-cli/pkg/rtutorial"
 	"github.com/ZupIT/ritchie-cli/pkg/slice/sliceutil"
@@ -57,35 +58,33 @@ var (
 		fmt.Sprintf("%s completion powershell", cmdUse),
 		fmt.Sprintf("%s init", cmdUse),
 		fmt.Sprintf("%s upgrade", cmdUse),
-		fmt.Sprintf("%s add repo", cmdUse),
 	}
 	upgradeList = []string{
 		cmdUse,
-	}
-
-	blockedCmdsByCommons = []string{
-		fmt.Sprintf("%s create formula", cmdUse),
 	}
 )
 
 type rootCmd struct {
 	ritchieHome string
-	dir         stream.DirCreateChecker
-	rt          rtutorial.Finder
-	vm          version.Manager
+	dir         stream.DirCreater
+	file        stream.FileExister
+	tutorial    rtutorial.Finder
+	version     version.Manager
 }
 
 func NewRootCmd(
 	ritchieHome string,
-	dir stream.DirCreateChecker,
+	dir stream.DirCreater,
+	file stream.FileExister,
 	rtf rtutorial.Finder,
 	vm version.Manager,
 ) *cobra.Command {
 	o := &rootCmd{
 		ritchieHome: ritchieHome,
 		dir:         dir,
-		rt:          rtf,
-		vm:          vm,
+		file:        file,
+		tutorial:    rtf,
+		version:     vm,
 	}
 
 	cmd := &cobra.Command{
@@ -113,7 +112,7 @@ func (ro *rootCmd) PreRunFunc() CommandRunnerFunc {
 			return nil
 		}
 
-		if !ro.ritchieIsInitialized() && isBlockedByCommons(blockedCmdsByCommons, cmd) {
+		if !ro.ritchieIsInitialized() && !isAllowList(cmd) {
 			fmt.Println(MsgInit)
 			os.Exit(0)
 		}
@@ -125,7 +124,7 @@ func (ro *rootCmd) PostRunFunc() CommandRunnerFunc {
 	return func(cmd *cobra.Command, args []string) error {
 		printNewVersionMessage(cmd, ro)
 		if !ro.ritchieIsInitialized() && cmd.Use == cmdUse {
-			tutorialHolder, err := ro.rt.Find()
+			tutorialHolder, err := ro.tutorial.Find()
 			if err != nil {
 				return err
 			}
@@ -137,8 +136,8 @@ func (ro *rootCmd) PostRunFunc() CommandRunnerFunc {
 
 func printNewVersionMessage(cmd *cobra.Command, ro *rootCmd) {
 	if isUpgradeCommand(upgradeList, cmd) {
-		currentStable, _ := ro.vm.StableVersion()
-		prompt.Warning(ro.vm.VerifyNewVersion(currentStable, Version))
+		currentStable, _ := ro.version.StableVersion()
+		prompt.Warning(ro.version.VerifyNewVersion(currentStable, Version))
 	}
 }
 
@@ -150,12 +149,12 @@ func isCompleteCmd(cmd *cobra.Command) bool {
 	return strings.Contains(cmd.CommandPath(), "__complete")
 }
 
-func isBlockedByCommons(blockList []string, cmd *cobra.Command) bool {
-	return sliceutil.Contains(blockList, cmd.CommandPath())
+func isAllowList(cmd *cobra.Command) bool {
+	return sliceutil.Contains(allowList, cmd.CommandPath())
 }
 
 func (ro *rootCmd) versionFlag() string {
-	latestVersion, err := ro.vm.StableVersion()
+	latestVersion, err := ro.version.StableVersion()
 	if err == nil && latestVersion != Version {
 		formattedLatestVersionMsg := prompt.Yellow(fmt.Sprintf(latestVersionMsg, latestVersion))
 		return fmt.Sprintf(
@@ -163,7 +162,8 @@ func (ro *rootCmd) versionFlag() string {
 			Version,
 			formattedLatestVersionMsg,
 			BuildDate,
-			runtime.Version())
+			runtime.Version(),
+		)
 	}
 	return fmt.Sprintf(versionMsg, Version, BuildDate, runtime.Version())
 }
@@ -185,6 +185,11 @@ func tutorialRit(tutorialStatus string) {
 }
 
 func (ro *rootCmd) ritchieIsInitialized() bool {
-	commonsRepoPath := filepath.Join(ro.ritchieHome, "repos", "commons")
-	return ro.dir.Exists(commonsRepoPath)
+	defaultRunnerFile := filepath.Join(ro.ritchieHome, "default-formula-runner")
+
+	if ro.file.Exists(metric.FilePath) && ro.file.Exists(defaultRunnerFile) {
+		return true
+	}
+
+	return false
 }
